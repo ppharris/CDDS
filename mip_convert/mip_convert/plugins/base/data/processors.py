@@ -563,6 +563,54 @@ def areacella(cube):
     return cell_area_cube
 
 
+def calc_rootd(soil_cube):
+    """
+    Returns a cube of the maximum rooting depth calculated from a cube
+    on a model's standard latitude-longitude grid and on soil levels.
+
+    Parameters
+    ----------
+    soil_cube: :class:`iris.cube.Cube`
+        A cube containing data on soil levels for that model.
+
+    Returns
+    -------
+    : :class:`iris.cube.Cube`
+        A cube containing the maximum root depth of that model.
+
+    Raises
+    ------
+    ValueError
+        If the cube contains a time coordinate.
+
+    """
+    if soil_cube.coord_dims('time'):
+        message = 'Source cube must not have a time coordinate.'
+        raise ValueError(message)
+
+    area_cube = soil_cube.slices(["latitude", "longitude"]).next()
+
+    # Calculate the max root depth as the maxiumum bound of the vertical
+    # coords.
+    depth_coord = _z_axis(soil_cube)
+    soil_depth = max(layer.bounds.max() for layer in depth_coord)
+
+    rootd_data = np.ma.masked_all_like(area_cube.data)
+    rootd_data[~area_cube.data.mask] = soil_depth
+
+    # Create a Cube of the max root depth data.
+    dim_coords_and_dims = list((coord, k) for (k, coord) in enumerate(area_cube.dim_coords))
+
+    rootd_cube = iris.cube.Cube(rootd_data,
+                                standard_name = "root_depth",
+                                long_name = "Maximum Root Depth",
+                                units = depth_coord.units,
+                                dim_coords_and_dims = dim_coords_and_dims,
+    )
+
+    return rootd_cube
+
+
 def fix_packing_division(numerator, denominator):
     """
     It fixes the zeroes introduced by the loss of precision caused by
