@@ -611,6 +611,59 @@ def calc_rootd(soil_cube):
     return rootd_cube
 
 
+def slthick(soil_cube):
+    """
+    Returns a cube of soil layer thickness calculated from a cube
+    on a model's standard latitude-longitude grid and on soil levels.
+
+    Parameters
+    ----------
+    soil_cube: :class:`iris.cube.Cube`
+        A cube containing data on soil levels for that model.
+
+    Returns
+    -------
+    : :class:`iris.cube.Cube`
+        A cube containing the thickness of each soil level of that model.
+
+    Raises
+    ------
+    ValueError
+        If the cube contains a time coordinate.
+
+    """
+
+    if soil_cube.coord_dims('time'):
+        message = 'Source cube must not have a time coordinate.'
+        raise ValueError(message)
+
+    # Calculate the thickness of a soil layer from the cell bounds of the
+    # vertical coord of the input Cube.
+    depth_coord = _z_axis(soil_cube)
+
+    slthick_data = soil_cube.data.copy()
+
+    for cell, data in zip(depth_coord, slthick_data):
+        data[:] = cell.bounds[0][1] - cell.bounds[0][0]
+
+    # Copy the land/sea mask from the source cube to the new array.
+    slthick_data.mask = soil_cube.data.mask
+
+    # Create a Cube of the soil level thickness data.
+    dim_coords_and_dims = list(
+        (coord, k) for (k, coord) in enumerate(soil_cube.dim_coords)
+    )
+
+    slthick_cube = iris.cube.Cube(slthick_data,
+                                  standard_name = "cell_thickness",
+                                  long_name = "Thickness of Soil Layers",
+                                  units = depth_coord.units,
+                                  dim_coords_and_dims = dim_coords_and_dims,
+                                  )
+
+    return slthick_cube
+
+
 def fix_packing_division(numerator, denominator):
     """
     It fixes the zeroes introduced by the loss of precision caused by
