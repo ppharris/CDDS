@@ -625,7 +625,7 @@ def calc_rootd(soil_cube, frac_cube, ice_class=None):
     return rootd_cube
 
 
-def slthick(soil_cube):
+def calc_slthick(soil_cube, frac_cube, ice_class=None):
     """
     Returns a cube of soil layer thickness calculated from a cube
     on a model's standard latitude-longitude grid and on soil levels.
@@ -634,6 +634,13 @@ def slthick(soil_cube):
     ----------
     soil_cube: :class:`iris.cube.Cube`
         A cube containing data on soil levels for that model.
+
+    frac_cube: :class:`iris.cube.Cube`
+        A cube containing JULES tile fractions for that model.
+
+    ice_class: str
+        Tile ID string for land ice.  If present, soil layer thickness
+        is set to zero on land ice points.
 
     Returns
     -------
@@ -659,6 +666,13 @@ def slthick(soil_cube):
 
     for cell, data in zip(depth_coord, slthick_data):
         data[:] = cell.bounds[0][1] - cell.bounds[0][0]
+
+    # Set max root depth to 0.0 m on land ice points.
+    if ice_class is not None:
+        ice_frac = frac_cube.extract(_pseudo_constraint(ice_class))
+        ice_cube = _collapse_pseudo(ice_frac, SUM)
+        ice_mask = ice_cube.data.data > 1e-6
+        slthick_data[:, ice_mask] = 0.0
 
     # Copy the land/sea mask from the source cube to the new array.
     slthick_data.mask = soil_cube.data.mask
