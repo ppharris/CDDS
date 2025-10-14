@@ -563,7 +563,7 @@ def areacella(cube):
     return cell_area_cube
 
 
-def calc_rootd(soil_cube):
+def calc_rootd(soil_cube, frac_cube, ice_class=None):
     """
     Returns a cube of the maximum rooting depth calculated from a cube
     on a model's standard latitude-longitude grid and on soil levels.
@@ -572,6 +572,13 @@ def calc_rootd(soil_cube):
     ----------
     soil_cube: :class:`iris.cube.Cube`
         A cube containing data on soil levels for that model.
+
+    frac_cube: :class:`iris.cube.Cube`
+        A cube containing JULES tile fractions for that model.
+
+    ice_class: str
+        Tile ID string for land ice.  If present, max root depth
+        is set to zero on land ice points.
 
     Returns
     -------
@@ -597,6 +604,13 @@ def calc_rootd(soil_cube):
 
     rootd_data = np.ma.masked_all_like(area_cube.data)
     rootd_data[~area_cube.data.mask] = soil_depth
+
+    # Set max root depth to 0.0 m on land ice points.
+    if ice_class is not None:
+        ice_frac = frac_cube.extract(_pseudo_constraint(ice_class))
+        ice_cube = _collapse_pseudo(ice_frac, SUM)
+        ice_mask = ice_cube.data.data > 1e-6
+        rootd_data[ice_mask] = 0.0
 
     # Create a Cube of the max root depth data.
     dim_coords_and_dims = list((coord, k) for (k, coord) in enumerate(area_cube.dim_coords))
