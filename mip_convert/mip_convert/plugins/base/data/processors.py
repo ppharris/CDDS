@@ -600,6 +600,10 @@ def calc_rootd(soil_cube, frac_cube, ice_class=None):
     # Calculate the max root depth as the maxiumum bound of the vertical
     # coords.
     depth_coord = _z_axis(soil_cube)
+
+    if depth_coord.bounds is None:
+        raise ValueError("Soil cube must have bounds on depth coord.")
+
     soil_depth = max(layer.bounds.max() for layer in depth_coord)
 
     rootd_data = np.ma.masked_all_like(area_cube.data)
@@ -663,6 +667,9 @@ def calc_slthick(soil_cube, frac_cube, ice_class=None):
     depth_coord = _z_axis(soil_cube)
 
     slthick_data = soil_cube.data.copy()
+
+    if depth_coord.bounds is None:
+        raise ValueError("Soil cube must have bounds on depth coord.")
 
     for cell, data in zip(depth_coord, slthick_data):
         data[:] = cell.bounds[0][1] - cell.bounds[0][0]
